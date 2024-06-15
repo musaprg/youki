@@ -559,20 +559,6 @@ pub fn container_init_process(
         err
     })?;
 
-    // add HOME into envs if not exists
-    let home_in_envs = envs.iter().any(|x| x.starts_with("HOME="));
-    if !home_in_envs {
-        if let Some(dir_home) = utils::get_user_home(proc.user().uid()) {
-            envs.push(format!("HOME={}", dir_home.to_string_lossy()));
-        }
-    }
-
-    // Reset the process env based on oci spec.
-    env::vars().for_each(|(key, _value)| env::remove_var(key));
-    utils::parse_env(&envs)
-        .iter()
-        .for_each(|(key, value)| env::set_var(key, value));
-
     // Initialize seccomp profile right before we are ready to execute the
     // payload so as few syscalls will happen between here and payload exec. The
     // notify socket will still need network related syscalls.
@@ -594,7 +580,16 @@ pub fn container_init_process(
         tracing::warn!("seccomp not available, unable to set seccomp privileges!")
     }
 
+    // add HOME into envs if not exists
+    let home_in_envs = envs.iter().any(|x| x.starts_with("HOME="));
+    if !home_in_envs {
+        if let Some(dir_home) = utils::get_user_home(proc.user().uid()) {
+            envs.push(format!("HOME={}", dir_home.to_string_lossy()));
+        }
+    }
+
     args.executor.validate(spec)?;
+    args.executor.set_envs(utils::parse_env(&envs))?;
 
     // Notify main process that the init process is ready to execute the
     // payload.  Note, because we are already inside the pid namespace, the pid

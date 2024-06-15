@@ -1,4 +1,8 @@
+use std::{collections::HashMap, env};
+
 use oci_spec::runtime::Spec;
+
+use crate::{apparmor, capabilities, hooks, notify_socket, rootfs, tty, utils, workload};
 
 pub mod default;
 
@@ -60,6 +64,16 @@ pub trait Executor: CloneBoxExecutor {
     /// namespace and cgroups, and pivot_root into the rootfs. But this step
     /// runs before waiting for the container start signal.
     fn validate(&self, spec: &Spec) -> Result<(), ExecutorValidationError>;
+
+    /// Set environment variables for the container process to be executed. 
+    fn set_envs(&self, envs: HashMap<String, String>) -> Result<(), ExecutorError> {
+        // Reset the process env based on oci spec.
+        env::vars().for_each(|(key, _value)| env::remove_var(key));
+        envs.iter()
+            .for_each(|(key, value)| env::set_var(key, value));
+
+        Ok(())
+    }
 }
 
 impl<T> CloneBoxExecutor for T
