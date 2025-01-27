@@ -31,5 +31,6 @@
 	],
 	"build": {
 		"dockerfile": "Dockerfile"
-	}
+	},
+	"remoteUser": "root"
 }
